@@ -22,6 +22,8 @@ const ListaNomes: React.FC = () => {
     const [quantidadeArtigos, setQuantidadeArtigos] = useState<number>(0);
     const [loading, setLoading] = useState(false);
     const [loadingSync, setLoadingSync] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<Nome | null>(null);
+
 
     useEffect(() => {
         const fetchNomes = async () => {
@@ -60,14 +62,14 @@ const ListaNomes: React.FC = () => {
             }
         };
         fetchNomes();
- 
+
     }, []);
     const handleOpenModal = async (item: Nome) => {
         setSelectedItem(item);
         setIsModalOpen(true);
 
         try {
-            
+
             const artigosSnapshot = await firestore.collection('materias').where('idArtista', '==', item.id).get();
 
             const artigosData: any = [];
@@ -75,16 +77,17 @@ const ListaNomes: React.FC = () => {
                 artigosData.push({ id: doc.id, ...doc.data() });
             });
 
-            
-            console.log(artigosData); 
+
+            console.log(artigosData);
         } catch (error) {
             console.error(error);
         }
     };
 
+
     const sincronizarArtigos = async () => {
         try {
-           setLoadingSync(true);
+            setLoadingSync(true);
             const apiKey = process.env.NEXT_PUBLIC_API_KEY;
             const searchEngineId = process.env.NEXT_PUBLIC_ENGINE_ID;
 
@@ -132,7 +135,7 @@ const ListaNomes: React.FC = () => {
                 });
             }
             setTimeout(() => {
-                setLoadingSync( false);
+                setLoadingSync(false);
             }, 500)
 
 
@@ -150,8 +153,19 @@ const ListaNomes: React.FC = () => {
         }
     };
 
+    const deleteArtista = async (artistaId: string) => {
+        try {
+            await firestore.collection('artistas').doc(artistaId).delete();
+            setSelectedUser(null);
 
- 
+            const updateNomes = nomes.filter((artista) => artista.id !== artistaId);
+            setNomes(updateNomes);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+
     return (
         <>
             <Layout>
@@ -194,10 +208,16 @@ const ListaNomes: React.FC = () => {
                                             </th>
 
                                             <td className=" py-4 flex flex-col md:flex-row self-center justify-center items-center space-y-2 md:space-y-0 md:space-x-3">
-                                                <button onClick={() => handleOpenModal(nome)} className="font-medium text-white hover:bg-blue-700 w-fit bg-blue-600 p-2">
+                                                <button onClick={() => handleOpenModal(nome)} className="font-medium text-white rounded-md hover:bg-blue-700 w-fit bg-blue-600 p-2">
                                                     Detalhes
                                                 </button>
+                                                <button
+                                                    onClick={() => deleteArtista(nome.id)}
+                                                    className="font-medium text-white rounded-md hover:bg-red-700 w-fit bg-red-600 p-2">
+                                                    Excluir
+                                                </button>
                                             </td>
+
                                         </tr>
                                     ))
                                 )}
