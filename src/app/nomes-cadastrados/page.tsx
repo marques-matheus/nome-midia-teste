@@ -89,6 +89,7 @@ const ListaNomes: React.FC = () => {
         try {
             setLoadingSync(true);
             setNomesComErro([]);
+            setErroFetch(false);
             const apiKey = process.env.NEXT_PUBLIC_API_KEY;
             const searchEngineId = process.env.NEXT_PUBLIC_ENGINE_ID;
 
@@ -152,7 +153,6 @@ const ListaNomes: React.FC = () => {
             setQuantidadeArtigos(existingArtigos.length);
             setSalvamentoSucesso(true);
             setQuantidadeArtigos(quantidadeArtigosNovos);
-            
             setTimeout(() => setSalvamentoSucesso(false), 1500);
             console.log(`${quantidadeArtigosNovos} artigos novos salvos.`);
         } catch (error) {
@@ -189,7 +189,7 @@ const ListaNomes: React.FC = () => {
                 <div className="flex flex-col w-full">
                     {salvamentoSucesso && (
                         <span className="text-center bg-green-100 border-2 border-green-600 text-lg font-bold w-6/12 self-center rounded py-2 mb-10 px-10 mx-auto text-green-500">
-                            {quantidadeArtigos} artigos salvos com sucesso.
+                            {quantidadeArtigos > 0 ? `${quantidadeArtigos} artigos salvos com sucesso.` : 'Nenhum artigo encontrado.'}
                         </span>
                     )}
                     {salvamentoErro && (
@@ -199,8 +199,9 @@ const ListaNomes: React.FC = () => {
                     )}
                     {erroFetch && (
                         <span className="text-center bg-red-100 border-2 border-red-600 text-lg font-bold w-6/12 self-center rounded py-2 mb-10 px-10 mx-auto text-red-500">
-                           Artigos não encontrados para {nomesComErro.join(', ')}
-                                                      
+                            Artigos não encontrados para {nomesComErro.map((nome, index) => (
+                                index === nomesComErro.length - 1 ? nome : nome + ', '
+                            ))}.
                         </span>
                     )}
                     {deleteSucesso && (
