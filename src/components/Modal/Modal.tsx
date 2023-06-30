@@ -37,7 +37,7 @@ const Modal: React.FC<{ selectedItem: any; closeModal: () => void }> = ({
   return (
     <div
       id="modal"
-      className="fixed inset-0 flex items-center justify-center z-9 bg-gray-500 bg-opacity-50 overflow-y-auto"
+      className="fixed inset-0 flex items-center justify-center z-9 bg-gray-500 bg-opacity-50"
     >
       <div className="relative w-6/12 h-6/12 mx-5 mt-20 md:mt-0 md:h-fit  md:ml-32 bg-white shadow-md rounded-lg p-10">
         <button

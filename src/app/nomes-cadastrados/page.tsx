@@ -18,7 +18,10 @@ const ListaNomes: React.FC = () => {
     const [selectedItem, setSelectedItem] = useState<Nome | null>(null);
     const [nomes, setNomes] = useState<Nome[]>([]);
     const [salvamentoSucesso, setSalvamentoSucesso] = useState(false);
+    const [deleteSucesso, setDeleteSucesso] = useState(false);
     const [salvamentoErro, setSalvamentoErro] = useState(false);
+    const [erroFetch, setErroFetch] = useState(false);
+    const [nomesComErro, setNomesComErro] = useState<string[]>([]);
     const [quantidadeArtigos, setQuantidadeArtigos] = useState<number>(0);
     const [loading, setLoading] = useState(false);
     const [loadingSync, setLoadingSync] = useState(false);
@@ -48,9 +51,6 @@ const ListaNomes: React.FC = () => {
                         nomesSnapshot.forEach((doc) => {
                             nomesData.push({ id: doc.id, ...doc.data() } as Nome);
                         });
-
-                        // Armazena os nomes no localStorage
-                        localStorage.setItem('nomes', JSON.stringify(nomesData));
 
                         setNomes(nomesData);
                     }
@@ -88,6 +88,7 @@ const ListaNomes: React.FC = () => {
     const sincronizarArtigos = async () => {
         try {
             setLoadingSync(true);
+            setNomesComErro([]);
             const apiKey = process.env.NEXT_PUBLIC_API_KEY;
             const searchEngineId = process.env.NEXT_PUBLIC_ENGINE_ID;
 
@@ -101,38 +102,46 @@ const ListaNomes: React.FC = () => {
             let quantidadeArtigosNovos = 0; // Variável para armazenar a quantidade de artigos novos
 
             for (const nome of nomesData) {
-                const query = `artigos e matérias sobre "${nome.nome}", {${nome.palavrasChave.join(' ')}} -twitter `;
-                const url = `https://customsearch.googleapis.com/customsearch/v1?cx=${searchEngineId}&key=${apiKey}&q=${query}&dateRestrict=d1`;
+                try {
+                    const query = `artigos e matérias sobre "${nome.nome}", {${nome.palavrasChave.join(' ')}} -twitter `;
+                    const url = `https://customsearch.googleapis.com/customsearch/v1?cx=${searchEngineId}&key=${apiKey}&q=${query}&dateRestrict=d1`;
 
-                const response = await axios.get(url);
-                const artigos = response.data.items.slice(0, 50);
+                    const response = await axios.get(url);
+                    const artigos = response.data.items.slice(0, 10);
 
-                const autorQuerySnapshot = await artistasRef.where('nome', '==', nome.nome).limit(1).get();
-                const autorId = autorQuerySnapshot.docs[0].id;
+                    const autorQuerySnapshot = await artistasRef.where('nome', '==', nome.nome).limit(1).get();
+                    const artistaId = autorQuerySnapshot.docs[0].id;
 
-                const existingArtigosQuerySnapshot = await materiasRef.where('idAutor', '==', autorId).get();
-                existingArtigosQuerySnapshot.forEach((doc) => {
-                    existingArtigos.push(doc.data().titulo);
-                });
+                    const existingArtigosQuerySnapshot = await materiasRef.where('idArtista', '==', artistaId).get();
+                    existingArtigosQuerySnapshot.forEach((doc) => {
+                        existingArtigos.push(doc.data().titulo);
+                    });
 
-                artigos.forEach((artigo: any) => {
-                    const titulo = artigo.title;
+                    artigos.forEach((artigo: any) => {
+                        const titulo = artigo.title;
 
-                    if (!existingArtigos.includes(titulo)) {
-                        const materiaData = {
-                            nomeArtista: nome.nome,
-                            titulo: artigo.title,
-                            descricao: artigo.snippet,
-                            url: artigo.link,
-                            idArtista: autorId,
-                        };
+                        if (!existingArtigos.includes(titulo)) {
+                            const materiaData = {
+                                nomeArtista: nome.nome,
+                                titulo: artigo.title,
+                                descricao: artigo.snippet,
+                                url: artigo.link,
+                                idArtista: artistaId,
+                            };
 
-                        const materiaDocRef = materiasRef.doc();
-                        batch.set(materiaDocRef, materiaData);
+                            const materiaDocRef = materiasRef.doc();
+                            batch.set(materiaDocRef, materiaData);
 
-                        quantidadeArtigosNovos++; // Incrementa a contagem de artigos novos
-                    }
-                });
+                            quantidadeArtigosNovos++; // Incrementa a contagem de artigos novos
+                        }
+                    });
+
+                } catch (error) {
+                    setErroFetch(true);
+                    setNomesComErro(prevNomes => [...prevNomes, nome.nome]);
+                    setTimeout(() => setErroFetch(false), 2500);
+                }
+
             }
             setTimeout(() => {
                 setLoadingSync(false);
@@ -143,6 +152,7 @@ const ListaNomes: React.FC = () => {
             setQuantidadeArtigos(existingArtigos.length);
             setSalvamentoSucesso(true);
             setQuantidadeArtigos(quantidadeArtigosNovos);
+            
             setTimeout(() => setSalvamentoSucesso(false), 1500);
             console.log(`${quantidadeArtigosNovos} artigos novos salvos.`);
         } catch (error) {
@@ -156,8 +166,15 @@ const ListaNomes: React.FC = () => {
     const deleteArtista = async (artistaId: string) => {
         try {
             await firestore.collection('artistas').doc(artistaId).delete();
+            await firestore.collection('materias').where('idArtista', '==', artistaId).get()
+                .then((querySnapshot) => {
+                    querySnapshot.forEach((doc) => {
+                        doc.ref.delete();
+                    });
+                })
             setSelectedUser(null);
-
+            setDeleteSucesso(true);
+            setTimeout(() => setDeleteSucesso(false), 1500);
             const updateNomes = nomes.filter((artista) => artista.id !== artistaId);
             setNomes(updateNomes);
         } catch (error) {
@@ -178,6 +195,17 @@ const ListaNomes: React.FC = () => {
                     {salvamentoErro && (
                         <span className="text-center bg-red-100 border-2 border-red-600 text-lg font-bold w-6/12 self-center rounded py-2 mb-10 px-10 mx-auto text-red-500">
                             Erro ao salvar artigos. Tente novamente mais tarde.
+                        </span>
+                    )}
+                    {erroFetch && (
+                        <span className="text-center bg-red-100 border-2 border-red-600 text-lg font-bold w-6/12 self-center rounded py-2 mb-10 px-10 mx-auto text-red-500">
+                           Artigos não encontrados para {nomesComErro.join(', ')}
+                                                      
+                        </span>
+                    )}
+                    {deleteSucesso && (
+                        <span className="text-center bg-green-100 border-2 border-green-600 text-lg font-bold w-6/12 self-center rounded py-2 mb-10 px-10 mx-auto text-green-500">
+                            Artista deletado com sucesso.
                         </span>
                     )}
                     <div className="relative py-10 w-full md:w-10/12 mx-auto md:ml-32 lg:ml-48 h-fit flex items-center justify-around flex-col overflow-x-auto shadow-md sm:rounded-lg">

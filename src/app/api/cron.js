@@ -19,45 +19,45 @@ async function sincronizarArtigos() {
     const existingArtigos = [];
 
     for (const nome of nomesData) {
-      const query = `artigos e matérias sobre  "${nome.nome}", {${nome.palavrasChave.join(' ')}} -twitter `;
-      const url = `https://customsearch.googleapis.com/customsearch/v1?cx=${searchEngineId}&key=${apiKey}&q=${query}&dateRestrict=d1`;
+      try {
+          const query = `artigos e matérias sobre "${nome.nome}", {${nome.palavrasChave.join(' ')}} -twitter `;
+          const url = `https://customsearch.googleapis.com/customsearch/v1?cx=${searchEngineId}&key=${apiKey}&q=${query}&dateRestrict=d1`;
 
-      const response = await axios.get(url);
-      const artigos = response.data.items.slice(0, 50);
+          const response = await axios.get(url);
+          const artigos = response.data.items.slice(0, 10);
 
-      const autorQuerySnapshot = await firestore
-        .collection('artistas')
-        .where('nome', '==', nome.nome)
-        .limit(1)
-        .get();
+          const autorQuerySnapshot = await artistasRef.where('nome', '==', nome.nome).limit(1).get();
+          const artistaId = autorQuerySnapshot.docs[0].id;
 
-      const artistaId = autorQuerySnapshot.docs[0].id;
+          const existingArtigosQuerySnapshot = await materiasRef.where('idArtista', '==', artistaId).get();
+          existingArtigosQuerySnapshot.forEach((doc) => {
+              existingArtigos.push(doc.data().titulo);
+          });
 
-      const existingArtigosQuerySnapshot = await materiasRef
-        .where('idArtista', '==', artistaId)
-        .get();
+          artigos.forEach((artigo) => {
+              const titulo = artigo.title;
 
-      existingArtigosQuerySnapshot.forEach((doc) => {
-        existingArtigos.push(doc.data().titulo);
-      });
+              if (!existingArtigos.includes(titulo)) {
+                  const materiaData = {
+                      nomeArtista: nome.nome,
+                      titulo: artigo.title,
+                      descricao: artigo.snippet,
+                      url: artigo.link,
+                      idArtista: artistaId,
+                  };
 
-      artigos.forEach((artigo) => {
-        const titulo = artigo.title;
+                  const materiaDocRef = materiasRef.doc();
+                  batch.set(materiaDocRef, materiaData);
 
-        if (!existingArtigos.includes(titulo)) {
-          const materiaData = {
-            nomeArtista: nome.nome,
-            titulo: artigo.title,
-            descricao: artigo.snippet,
-            url: artigo.link,
-            idArtista: artistaId,
-          };
+                  quantidadeArtigosNovos++; 
+              }
+          });
 
-          const materiaDocRef = materiasRef.doc();
-          batch.set(materiaDocRef, materiaData);
-        }
-      });
-    }
+      } catch (error) {
+         console.error(error);
+      }
+
+  }
 
     await batch.commit();
 

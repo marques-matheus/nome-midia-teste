@@ -99,7 +99,6 @@ const ListaUsuarios: React.FC = () => {
                         </tbody>
                     </table>}
                 </div>
-
             </Layout>
         </>
     );
