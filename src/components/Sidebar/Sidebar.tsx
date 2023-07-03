@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { auth, firestore } from '../../../firebase';
-import { MdOutlineDashboard } from 'react-icons/md';
+import { MdOutlineDashboard, MdBusiness } from 'react-icons/md';
 import { AiOutlineUser, AiOutlineUserAdd, AiOutlineLogout } from 'react-icons/ai';
 import { FiUserPlus } from 'react-icons/fi';
 import ItemNav from '../ItemNav';
@@ -10,14 +10,14 @@ import ItemNav from '../ItemNav';
 type ItemNavProps = {
   currentUser: any;
 }
-const Sidebar = ({currentUser}: ItemNavProps) => {
+const Sidebar = ({ currentUser }: ItemNavProps) => {
   const pathname = usePathname();
   const isActive = (url: string) => {
     return pathname === url;
   };
 
   const [isOpen, setIsOpen] = useState(false);
-  
+
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
@@ -27,7 +27,7 @@ const Sidebar = ({currentUser}: ItemNavProps) => {
   const handleLogout = async () => {
     try {
       await auth.signOut();
-      
+
 
     } catch (error: any) {
       console.log(error.message);
@@ -74,6 +74,10 @@ const Sidebar = ({currentUser}: ItemNavProps) => {
                 <ItemNav icon={<AiOutlineUser size={24} color='gray' />} text="Usuarios Cadastrados" href="/usuarios-cadastrados" active={isActive('/usuarios-cadastrados')} />
               ) : (
                 <ItemNav icon={<AiOutlineUser size={24} color='gray' />} text="Nomes Cadastrados" href="/nomes-cadastrados" active={isActive('/nomes-cadastrados')} />
+              )}
+
+              {currentUser && currentUser.isAdmin && (
+                <ItemNav icon={<MdBusiness size={24} color='gray' />} text="Empresas Cadastradas" href="/empresas-registradas" active={isActive('/empresas-registradas')} />
               )}
               {currentUser && currentUser.isAdmin && (
                 <ItemNav icon={<FiUserPlus size={24} color='gray' />} text="Cadastrar Usuário" href="/registro-admin" active={isActive('/registro-admin')} />

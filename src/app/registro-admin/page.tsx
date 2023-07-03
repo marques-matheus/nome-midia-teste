@@ -86,7 +86,6 @@ const RegisterAdmin = () => {
         } catch (error: any) {
             setSalvamentoErro(true);
             setTimeout(() => setSalvamentoErro(false), 2000);
-            setLoading(false);
         }
     };
 
@@ -94,7 +93,7 @@ const RegisterAdmin = () => {
     return (
         <Layout>
 
-            <div className="flex flex-col items-center w-full  m-auto mt-24">
+            <div className="flex flex-col items-center w-full m-auto mt-24">
                 {salvamentoSucesso && (
                     <span className="text-center bg-green-100 border-2 border-green-600 text-lg font-bold w-full rounded py-2 mb-10 px-10 mx-auto text-green-500">
                         Usuario salvo com sucesso!

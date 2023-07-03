@@ -9,6 +9,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
  
     useEffect(() => {
+        setLoading(true);
         const unsubscribe = auth.onAuthStateChanged((user: any) => {
 
             setCurrentUser(user);
@@ -28,13 +29,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                             }));
                         }
 
-                        console.log(currentUser);
+                        
                     })
                     .catch((error) => {
                         console.error('Error fetching user data:', error);
                     });
             }
-            setTimeout(() => setLoading(false), 500);
+            setTimeout(() => setLoading(false), 1000);
         });
 
         return () => {

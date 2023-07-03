@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { auth, firestore } from '../../../firebase';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/Button';
+import { Spinner } from 'flowbite-react';
 
 const RegisterForm = () => {
   const [email, setEmail] = useState('');
@@ -10,6 +11,7 @@ const RegisterForm = () => {
   const [displayName, setDisplayName] = useState('');
   const [nomeEmpresa, setNomeEmpresa] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -37,6 +39,8 @@ const RegisterForm = () => {
           await userRef.update({ isAdmin: false });
         }
 
+        setLoading(true);
+        setTimeout(() => setLoading(false), 500);
         router.push('/'); // Redirecionar para a página do painel após o registro bem-sucedido
       }
     } catch (error: any) {
@@ -77,7 +81,7 @@ const RegisterForm = () => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <Button type="submit"  text="Registrar" />
+        <Button type="submit" text={loading ? 'Registrando...' : 'Entrar'} loading={loading} />
       </form>
     </div>
   );

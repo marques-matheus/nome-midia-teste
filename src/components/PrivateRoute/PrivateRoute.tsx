@@ -16,8 +16,8 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }: PrivateRoutePro
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (!user) {
         setLoading(true);
-        router.push('/entrar');
-        setTimeout(() => setLoading(false), 1500);
+        router.push('/login');
+        setTimeout(() => setLoading(false), 2000);
       }
     });
 

@@ -15,6 +15,7 @@ const ListaUsuarios: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(false);
+    const [deleteSucesso, setDeleteSucesso] = useState(false);
 
     useEffect(() => {
         const fetchUsers = async () => {
@@ -42,7 +43,11 @@ const ListaUsuarios: React.FC = () => {
             setSelectedUser(null);
             
             const updatedUsers = users.filter((user) => user.id !== userId);
+            setLoading(true)
             setUsers(updatedUsers);
+            setTimeout(() => setLoading(false), 800);
+            setTimeout(() => setDeleteSucesso(true),1000);
+            setTimeout(() => setDeleteSucesso(false), 800);
         } catch (error) {
             console.error(error);
         }
@@ -54,7 +59,11 @@ const ListaUsuarios: React.FC = () => {
         <>
             <Layout>
                 <div className="relative w-full md:w-10/12 mx-auto md:ml-32 lg:ml-48 h-fit py-10 flex items-center justify-around flex-col overflow-x-auto shadow-md sm:rounded-lg">
-
+                {deleteSucesso && (
+                        <span className="text-center bg-green-100 border-2 border-green-600 text-lg font-bold w-6/12 self-center rounded py-2 mb-10 px-10 mx-auto text-green-500">
+                            Usuario deletado com sucesso.
+                        </span>
+                    )}
                     {loading ? <Spinner size="xl" /> : <table className="w-full text-sm text-gray-500">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr className="flex flex-row justify-between items-center w-full lg:px-10 xl:px-16 px-5">

@@ -6,11 +6,14 @@ import Modal from '@/components/Modal';
 import axios from 'axios';
 import { Spinner } from 'flowbite-react';
 import Button from '@/components/Button';
+import Link from 'next/link';
 
 interface Nome {
     id: string;
     nome: string;
     palavrasChave: string[];
+    ultimaSincronizacao: Date | null;
+    ultimaDataRetorno: Date | null;
 }
 
 const ListaNomes: React.FC = () => {
@@ -25,7 +28,7 @@ const ListaNomes: React.FC = () => {
     const [quantidadeArtigos, setQuantidadeArtigos] = useState<number>(0);
     const [loading, setLoading] = useState(false);
     const [loadingSync, setLoadingSync] = useState(false);
-    const [selectedUser, setSelectedUser] = useState<Nome | null>(null);
+    const [selectedArtista, setSelectedArtista] = useState<Nome | null>(null);
 
 
     useEffect(() => {
@@ -49,7 +52,10 @@ const ListaNomes: React.FC = () => {
 
                         const nomesData: Nome[] = [];
                         nomesSnapshot.forEach((doc) => {
-                            nomesData.push({ id: doc.id, ...doc.data() } as Nome);
+                            nomesData.push({
+                                id: doc.id, ultimaSincronizacao: null,
+                                ultimaDataRetorno: null, ...doc.data()
+                            } as Nome);
                         });
 
                         setNomes(nomesData);
@@ -89,7 +95,7 @@ const ListaNomes: React.FC = () => {
         try {
             setLoadingSync(true);
             setNomesComErro([]);
-            setErroFetch(false);
+
             const apiKey = process.env.NEXT_PUBLIC_API_KEY;
             const searchEngineId = process.env.NEXT_PUBLIC_ENGINE_ID;
 
@@ -136,8 +142,27 @@ const ListaNomes: React.FC = () => {
                             quantidadeArtigosNovos++; // Incrementa a contagem de artigos novos
                         }
                     });
+                    const ultimaSincronizacao = new Date();
+                    const ultimaDataRetorno = new Date();
+
+                    nome.ultimaSincronizacao = ultimaSincronizacao;
+                    quantidadeArtigosNovos === 0 ? nome.ultimaDataRetorno = nome.ultimaDataRetorno : nome.ultimaDataRetorno = ultimaDataRetorno;
+
+                    const nomeRef = firestore.collection('artistas').doc(nome.id);
+                    batch.update(nomeRef, {
+                        ultimaSincronizacao: ultimaSincronizacao.toISOString(),
+                        ultimaDataRetorno: ultimaDataRetorno.toISOString(),
+                    });
+
 
                 } catch (error) {
+                    const nomeRef = firestore.collection('artistas').doc(nome.id);
+                    const ultimaSincronizacao = new Date();
+                    nome.ultimaSincronizacao = ultimaSincronizacao;
+                    batch.update(nomeRef, {
+                        ultimaSincronizacao: ultimaSincronizacao.toISOString(),
+
+                    });
                     setErroFetch(true);
                     setNomesComErro(prevNomes => [...prevNomes, nome.nome]);
                     setTimeout(() => setErroFetch(false), 2500);
@@ -155,6 +180,7 @@ const ListaNomes: React.FC = () => {
             setQuantidadeArtigos(quantidadeArtigosNovos);
             setTimeout(() => setSalvamentoSucesso(false), 1500);
             console.log(`${quantidadeArtigosNovos} artigos novos salvos.`);
+
         } catch (error) {
             console.error(error);
             setSalvamentoErro(true);
@@ -172,52 +198,75 @@ const ListaNomes: React.FC = () => {
                         doc.ref.delete();
                     });
                 })
-            setSelectedUser(null);
-            setDeleteSucesso(true);
-            setTimeout(() => setDeleteSucesso(false), 1500);
+            setSelectedArtista(null);
             const updateNomes = nomes.filter((artista) => artista.id !== artistaId);
+            setLoading(true);
             setNomes(updateNomes);
+            setTimeout(() => setLoading(false), 800);
+            setTimeout(() => setDeleteSucesso(true), 1000);
+            setTimeout(() => setDeleteSucesso(false), 800);
         } catch (error) {
             console.error(error);
         }
     };
 
+    function formatarData(data: any) {
+        const options: any = {
+            year: '2-digit',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            timeZone: 'America/Sao_Paulo',
+
+        };
+
+        const formatter = new Intl.DateTimeFormat('pt-BR', options);
+        return formatter.format(new Date(data));
+    }
 
     return (
         <>
             <Layout>
                 <div className="flex flex-col w-full">
-                    {salvamentoSucesso && (
-                        <span className="text-center bg-green-100 border-2 border-green-600 text-lg font-bold w-6/12 self-center rounded py-2 mb-10 px-10 mx-auto text-green-500">
-                            {quantidadeArtigos > 0 ? `${quantidadeArtigos} artigos salvos com sucesso.` : 'Nenhum artigo encontrado.'}
-                        </span>
-                    )}
-                    {salvamentoErro && (
-                        <span className="text-center bg-red-100 border-2 border-red-600 text-lg font-bold w-6/12 self-center rounded py-2 mb-10 px-10 mx-auto text-red-500">
-                            Erro ao salvar artigos. Tente novamente mais tarde.
-                        </span>
-                    )}
-                    {erroFetch && (
-                        <span className="text-center bg-red-100 border-2 border-red-600 text-lg font-bold w-6/12 self-center rounded py-2 mb-10 px-10 mx-auto text-red-500">
-                            Artigos não encontrados para {nomesComErro.map((nome, index) => (
-                                index === nomesComErro.length - 1 ? nome : nome + ', '
-                            ))}.
-                        </span>
-                    )}
-                    {deleteSucesso && (
-                        <span className="text-center bg-green-100 border-2 border-green-600 text-lg font-bold w-6/12 self-center rounded py-2 mb-10 px-10 mx-auto text-green-500">
-                            Artista deletado com sucesso.
-                        </span>
-                    )}
+
                     <div className="relative py-10 w-full md:w-10/12 mx-auto md:ml-32 lg:ml-48 h-fit flex items-center justify-around flex-col overflow-x-auto shadow-md sm:rounded-lg">
-                        {loading ? <Spinner size="xl" /> : <table className="w-full text-sm  text-gray-500">
+                        {salvamentoSucesso && (
+                            quantidadeArtigos > 0 ? <span className="text-center bg-green-100 border-2 border-green-600 text-lg font-bold w-6/12 self-center rounded py-2 mb-10 px-10 mx-auto text-green-500">
+                                {quantidadeArtigos} artigos salvos com sucesso. </span> : <span className="text-center bg-red-100 border-2 border-red-600 text-lg font-bold w-6/12 self-center rounded py-2 mb-10 px-10 mx-auto text-red-500">
+                                Nenhum artigo novo encontrado </span>
+                        )}
+                        {salvamentoErro && (
+                            <span className="text-center bg-red-100 border-2 border-red-600 text-lg font-bold w-6/12 self-center rounded py-2 mb-10 px-10 mx-auto text-red-500">
+                                Erro ao salvar artigos. Tente novamente mais tarde.
+                            </span>
+                        )}
+                        {erroFetch && (
+                            <span className="text-center bg-red-100 border-2 border-red-600 text-lg font-bold w-6/12 self-center rounded py-2 mb-10 px-10 mx-auto text-red-500">
+                                Nenhum artigo novo encontrado para o(s) artista(s): {nomesComErro.map((nome, index) => (
+                                    index === nomesComErro.length - 1 ? nome : nome + ', '
+                                ))}.
+                            </span>
+                        )}
+                        {deleteSucesso && (
+                            <span className="text-center bg-green-100 border-2 border-green-600 text-lg font-bold w-6/12 self-center rounded py-2 mb-10 px-10 mx-auto text-green-500">
+                                Artista deletado com sucesso.
+                            </span>
+                        )}
+                        {loading ? <Spinner size="xl" /> : <table className="w-full text-sm text-gray-500">
                             <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                                <tr className='flex flex-row justify-between items-center w-full lg:px-10 xl:px-16 px-5'>
-                                    <th scope="col" className=" py-3">
+                                <tr>
+                                    <th scope="col" className="py-3">
                                         Nome
                                     </th>
-
-                                    <th scope="col" className=" py-3">
+                                    <th scope="col" className="py-3">
+                                        Última Sincronização
+                                    </th>
+                                    <th scope="col" className="py-3">
+                                        Última Data de Retorno
+                                    </th>
+                                    <th scope="col" className="py-3">
                                         Ações
                                     </th>
                                 </tr>
@@ -225,42 +274,45 @@ const ListaNomes: React.FC = () => {
                             <tbody>
                                 {nomes.length === 0 ? (
                                     <tr>
-                                        <td colSpan={3} className="py-4 text-center text-gray-500">
+                                        <td colSpan={4} className="py-4 text-center text-gray-500">
                                             Não existem nomes cadastrados
                                         </td>
                                     </tr>
                                 ) : (
                                     nomes.map((nome) => (
-                                        <tr key={nome.id} className="bg-white border-b flex flex-row justify-between items-center w-full lg:px-10 xl:px-16 px-5">
-                                            <th scope="row" className=" py-4 font-medium text-left text-gray-900 whitespace-nowrap">
+                                        <tr key={nome.id} className="bg-white border-b">
+                                            <td scope="row" className="py-4 px-2 font-medium text-center text-gray-900">
                                                 {nome.nome}
-                                            </th>
-
-                                            <td className=" py-4 flex flex-col md:flex-row self-center justify-center items-center space-y-2 md:space-y-0 md:space-x-3">
-                                                <button onClick={() => handleOpenModal(nome)} className="font-medium text-white rounded-md hover:bg-blue-700 w-fit bg-blue-600 p-2">
-                                                    Detalhes
+                                            </td>
+                                            <td className="py-4 px-2 text-center">
+                                                {nome.ultimaSincronizacao ? formatarData(nome.ultimaSincronizacao) : 'Nunca sincronizado'}
+                                            </td>
+                                            <td className="py-4 px-2 text-center">
+                                                {nome.ultimaDataRetorno ? formatarData(nome.ultimaDataRetorno) : 'Nunca retornou'}
+                                            </td>
+                                            <td className="py-4 px-2 flex flex-col md:flex-row items-center justify-center space-y-2 md:space-y-0 md:space-x-3">
+                                                <button className="font-medium text-white rounded-md hover:bg-blue-700 bg-blue-600 p-2">
+                                                    <Link href={`/detalhes/${nome.id}`}>
+                                                        Detalhes
+                                                    </Link>
                                                 </button>
-                                                <button
-                                                    onClick={() => deleteArtista(nome.id)}
-                                                    className="font-medium text-white rounded-md hover:bg-red-700 w-fit bg-red-600 p-2">
+                                                <button onClick={() => deleteArtista(nome.id)} className="font-medium text-white rounded-md hover:bg-red-700 bg-red-600 p-2">
                                                     Excluir
                                                 </button>
                                             </td>
-
                                         </tr>
                                     ))
                                 )}
                             </tbody>
-
-
-                        </table>}
+                        </table>
+                        }
                         <Button type="button" onClick={sincronizarArtigos} text={loadingSync ? 'Sincronizando...' : 'Sincronizar Artigos'} loading={loadingSync} />
                     </div>
                 </div>
 
 
                 {isModalOpen && <Modal selectedItem={selectedItem} closeModal={() => setIsModalOpen(false)} />}
-            </Layout>
+            </Layout >
         </>
     );
 };
