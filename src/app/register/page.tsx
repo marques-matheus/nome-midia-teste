@@ -40,19 +40,31 @@ const RegisterForm = () => {
         }
 
         setLoading(true);
-        setTimeout(() => setLoading(false), 500);
+        setTimeout(() => setLoading(false), 1000);
         router.push('/'); // Redirecionar para a página do painel após o registro bem-sucedido
       }
     } catch (error: any) {
-      setErrorMessage(error.message);
+      if (error.code === 'auth/email-already-in-use') {
+        setErrorMessage('Este e-mail já foi cadastrado');
+      } else if (error.code === 'auth/invalid-email') {
+        setErrorMessage('Email inválido');
+      } else if (error.code === 'auth/weak-password') {
+        setErrorMessage('Senha muito fraca, a senha deve ter no mínimo 6 caracteres');
+      } else if (error.code === 'auth/invalid-password') {
+        setErrorMessage('Senha inválida');
+      } else if (error.code === 'auth/invalid-email') {
+        setErrorMessage('Email inválido');
+      } else {
+        setErrorMessage(error.message);
+      }
     }
   };
 
   return (
     <div className="flex flex-col items-center w-full  m-auto mt-56">
-    <h1 className="text-2xl font-bold mb-4">Registrar</h1>
-    {errorMessage && <p className="text-red-500 mb-4">{errorMessage}</p>}
-    <form className="flex flex-col items-center lg:w-6/12 shadow-lg p-10" onSubmit={handleRegister}>
+      <h1 className="text-2xl font-bold mb-4">Registrar</h1>
+      {errorMessage && <p className="text-red-500 mb-4">{errorMessage}</p>}
+      <form className="flex flex-col items-center lg:w-6/12 shadow-lg p-10" onSubmit={handleRegister}>
         <input
           type="text"
           placeholder="Nome do usuário"

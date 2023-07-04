@@ -12,6 +12,7 @@ const RegisterAdmin = () => {
     const [nomeEmpresa, setNomeEmpresa] = useState('');
     const [salvamentoSucesso, setSalvamentoSucesso] = useState(false);
     const [salvamentoErro, setSalvamentoErro] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
     const [currentUser, setCurrentUser] = useState<any>();
     const [loading, setLoading] = useState(false);
     const router = useRouter();
@@ -86,6 +87,20 @@ const RegisterAdmin = () => {
         } catch (error: any) {
             setSalvamentoErro(true);
             setTimeout(() => setSalvamentoErro(false), 2000);
+            if (error.code === 'auth/email-already-in-use') {
+                setErrorMessage('Este e-mail já foi cadastrado');
+            } else if (error.code === 'auth/invalid-email') {
+                setErrorMessage('Email inválido');
+            } else if (error.code === 'auth/weak-password') {
+                setErrorMessage('Senha muito fraca, a senha deve ter no mínimo 6 caracteres');
+            } else if (error.code === 'auth/invalid-password') {
+                setErrorMessage('Senha inválida');
+            } else if (error.code === 'auth/invalid-email') {
+                setErrorMessage('Email inválido');
+            } else {
+                setErrorMessage(error.message);
+            }
+
         }
     };
 

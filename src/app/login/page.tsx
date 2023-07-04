@@ -19,7 +19,15 @@ const Entrar: React.FC = () => {
       await auth.signInWithEmailAndPassword(email, password);
       router.push('/'); // Redirecionar para a página do painel após o login bem-sucedido
     } catch (error: any) {
-      setErrorMessage(error.message);
+      if (error.code === 'auth/invalid-email') {
+        setErrorMessage('Email inválido');
+      } else if (error.code === 'auth/user-not-found') {
+        setErrorMessage('Email não cadastrado');
+      } else if (error.code === 'auth/wrong-password') {
+        setErrorMessage('Senha incorreta');
+      } else {
+        setErrorMessage(error.message);
+      }
     }
   };
 

@@ -119,7 +119,7 @@ const listaEmpresas: React.FC = () => {
                                 empresas.map((empresa) => (
                                     <tr
                                         key={empresa.id}
-                                        className="bg-white border-b flex flex-row justify-between items-center w-full lg:px-10 xl:px-16 px-5"
+                                        className="bg-white border-b flex flex-row justify-between items-center w-full px-5 "
                                     >
                                         <th
                                             scope="row"
@@ -135,7 +135,7 @@ const listaEmpresas: React.FC = () => {
                                         </th>
                                         <th
                                             scope="row"
-                                            className="py-4 font-medium text-right text-gray-900 "
+                                            className="py-4 font-medium text-center text-gray-900 "
                                         >
                                             {empresa.nomes}
                                         </th>

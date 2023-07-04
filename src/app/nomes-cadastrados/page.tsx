@@ -285,10 +285,10 @@ const ListaNomes: React.FC = () => {
                                                 {nome.nome}
                                             </td>
                                             <td className="py-4 px-2 text-center">
-                                                {nome.ultimaSincronizacao ? formatarData(nome.ultimaSincronizacao) : 'Nunca sincronizado'}
+                                                {nome.ultimaSincronizacao ? formatarData(nome.ultimaSincronizacao) : 'Não sincronizado'}
                                             </td>
                                             <td className="py-4 px-2 text-center">
-                                                {nome.ultimaDataRetorno ? formatarData(nome.ultimaDataRetorno) : 'Nunca retornou'}
+                                                {nome.ultimaDataRetorno ? formatarData(nome.ultimaDataRetorno) : 'Sem resultados'}
                                             </td>
                                             <td className="py-4 px-2 flex flex-col md:flex-row items-center justify-center space-y-2 md:space-y-0 md:space-x-3">
                                                 <button className="font-medium text-white rounded-md hover:bg-blue-700 bg-blue-600 p-2">

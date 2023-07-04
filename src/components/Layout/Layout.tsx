@@ -49,7 +49,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         <PrivateRoute>
 
             {loading ? <Spinner color={'info'} className='absolute top-1/2 left-1/2' size="xl" /> : <>
-                <main className="flex min-h-screen w-screen justify-center ">
+                <main className="flex min-h-screen  justify-center ">
                     <Sidebar currentUser={currentUser} />
                     <section className="flex relative py-24 px-10 justify-center md:pl-28  w-full lg:w-10/12">
                         {children}
