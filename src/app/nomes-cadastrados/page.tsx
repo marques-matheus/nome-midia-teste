@@ -1,214 +1,57 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { firestore, auth } from '../../../firebase';
-import Layout from '@/components/Layout';
-import Modal from '@/components/Modal';
-import axios from 'axios';
+import Layout from '@/components/Layout';;
 import { Spinner } from 'flowbite-react';
 import Button from '@/components/Button';
 import Link from 'next/link';
+import { Artist } from '@/types';
+import { getArtistsForCompany, delete_artist } from '@/utils/firebase';
+import useSyncArticles from '@/hooks/useSyncArticles';
+import { useGetUserInfo } from '@/hooks/useGetUserInfo';
 
-interface Nome {
-    id: string;
-    nome: string;
-    palavrasChave: string[];
-    ultimaSincronizacao: Date | null;
-    ultimaDataRetorno: Date | null;
-}
 
 const ListaNomes: React.FC = () => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedItem, setSelectedItem] = useState<Nome | null>(null);
-    const [nomes, setNomes] = useState<Nome[]>([]);
-    const [salvamentoSucesso, setSalvamentoSucesso] = useState(false);
+
+    const [nomes, setNomes] = useState<Artist[]>([]);
     const [deleteSucesso, setDeleteSucesso] = useState(false);
-    const [salvamentoErro, setSalvamentoErro] = useState(false);
-    const [erroFetch, setErroFetch] = useState(false);
-    const [nomesComErro, setNomesComErro] = useState<string[]>([]);
-    const [quantidadeArtigos, setQuantidadeArtigos] = useState<number>(0);
-    const [loading, setLoading] = useState(false);
-    const [loadingSync, setLoadingSync] = useState(false);
-    const [selectedArtista, setSelectedArtista] = useState<Nome | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [selectedArtista, setSelectedArtista] = useState<Artist | null>(null);
+    const { company } = useGetUserInfo();
+
+    const { erroFetch, loadingSync, nomesComErro, quantidadeArtigos, salvamentoErro, salvamentoSucesso, allArtistsSelected, selectedArtistas, setAllArtistsSelected, setSelectedArtistas, sincronizarArtigos } = useSyncArticles(nomes);
 
 
     useEffect(() => {
         const fetchNomes = async () => {
             try {
-                setLoading(true);
-
-                const user = auth.currentUser;
-                if (user) {
-                    const userSnapshot = await firestore
-                        .collection('users')
-                        .doc(user.uid)
-                        .get();
-                    const empresaID = userSnapshot.data()?.empresaId;
-
-                    if (empresaID) {
-                        const nomesSnapshot = await firestore
-                            .collection('artistas')
-                            .where('empresaId', '==', empresaID)
-                            .get();
-
-                        const nomesData: Nome[] = [];
-                        nomesSnapshot.forEach((doc) => {
-                            nomesData.push({
-                                id: doc.id, ultimaSincronizacao: null,
-                                ultimaDataRetorno: null, ...doc.data()
-                            } as Nome);
-                        });
-
-                        setNomes(nomesData);
-                    }
+                if (company && company.uid) {
+                    const artists = await getArtistsForCompany(company.uid);
+                    setNomes(artists);
+                   setTimeout(() => setLoading(false), 500);
+                } else {
+                  
+                    console.log("ID da empresa não disponível");
                 }
-
-                setTimeout(() => setLoading(false), 500);
             } catch (error) {
                 console.error(error);
             }
         };
+    
         fetchNomes();
+    }, [company]);
+    
 
-    }, []);
-    const handleOpenModal = async (item: Nome) => {
-        setSelectedItem(item);
-        setIsModalOpen(true);
+    const deleteArtista = async ({ id }: { id: string | undefined }) => {
+        await delete_artist(id, company?.uid);
+        setSelectedArtista(null);
+        const updateNomes = nomes.filter((artista) => artista.id !== id);
+        setLoading(true);
+        setNomes(updateNomes);
+        setTimeout(() => setLoading(false), 800);
+        setTimeout(() => setDeleteSucesso(true), 1000);
+       setDeleteSucesso(false)
+    }
 
-        try {
-
-            const artigosSnapshot = await firestore.collection('materias').where('idArtista', '==', item.id).get();
-
-            const artigosData: any = [];
-            artigosSnapshot.forEach((doc) => {
-                artigosData.push({ id: doc.id, ...doc.data() });
-            });
-
-
-            console.log(artigosData);
-        } catch (error) {
-            console.error(error);
-        }
-    };
-
-
-    const sincronizarArtigos = async () => {
-        try {
-            setLoadingSync(true);
-            setNomesComErro([]);
-
-            const apiKey = process.env.NEXT_PUBLIC_API_KEY;
-            const searchEngineId = process.env.NEXT_PUBLIC_ENGINE_ID;
-
-            const batch = firestore.batch();
-            const materiasRef = firestore.collection('materias');
-            const artistasRef = firestore.collection('artistas');
-
-            const existingArtigos: string[] = [];
-
-            const nomesData: Nome[] = [...nomes];
-            let quantidadeArtigosNovos = 0; // Variável para armazenar a quantidade de artigos novos
-
-            for (const nome of nomesData) {
-                try {
-                    const query = `artigos e matérias sobre "${nome.nome}", {${nome.palavrasChave.join(' ')}} -twitter `;
-                    const url = `https://customsearch.googleapis.com/customsearch/v1?cx=${searchEngineId}&key=${apiKey}&q=${query}&dateRestrict=d1`;
-
-                    const response = await axios.get(url);
-                    const artigos = response.data.items.slice(0, 10);
-
-                    const autorQuerySnapshot = await artistasRef.where('nome', '==', nome.nome).limit(1).get();
-                    const artistaId = autorQuerySnapshot.docs[0].id;
-
-                    const existingArtigosQuerySnapshot = await materiasRef.where('idArtista', '==', artistaId).get();
-                    existingArtigosQuerySnapshot.forEach((doc) => {
-                        existingArtigos.push(doc.data().titulo);
-                    });
-
-                    artigos.forEach((artigo: any) => {
-                        const titulo = artigo.title;
-
-                        if (!existingArtigos.includes(titulo)) {
-                            const materiaData = {
-                                nomeArtista: nome.nome,
-                                titulo: artigo.title,
-                                descricao: artigo.snippet,
-                                url: artigo.link,
-                                idArtista: artistaId,
-                            };
-
-                            const materiaDocRef = materiasRef.doc();
-                            batch.set(materiaDocRef, materiaData);
-
-                            quantidadeArtigosNovos++; // Incrementa a contagem de artigos novos
-                        }
-                    });
-                    const ultimaSincronizacao = new Date();
-                    const ultimaDataRetorno = new Date();
-
-                    nome.ultimaSincronizacao = ultimaSincronizacao;
-                    quantidadeArtigosNovos === 0 ? nome.ultimaDataRetorno = nome.ultimaDataRetorno : nome.ultimaDataRetorno = ultimaDataRetorno;
-
-                    const nomeRef = firestore.collection('artistas').doc(nome.id);
-                    batch.update(nomeRef, {
-                        ultimaSincronizacao: ultimaSincronizacao.toISOString(),
-                        ultimaDataRetorno: ultimaDataRetorno.toISOString(),
-                    });
-
-
-                } catch (error) {
-                    const nomeRef = firestore.collection('artistas').doc(nome.id);
-                    const ultimaSincronizacao = new Date();
-                    nome.ultimaSincronizacao = ultimaSincronizacao;
-                    batch.update(nomeRef, {
-                        ultimaSincronizacao: ultimaSincronizacao.toISOString(),
-
-                    });
-                    setErroFetch(true);
-                    setNomesComErro(prevNomes => [...prevNomes, nome.nome]);
-                    setTimeout(() => setErroFetch(false), 2500);
-                }
-
-            }
-            setTimeout(() => {
-                setLoadingSync(false);
-            }, 500)
-
-
-            await batch.commit();
-            setQuantidadeArtigos(existingArtigos.length);
-            setSalvamentoSucesso(true);
-            setQuantidadeArtigos(quantidadeArtigosNovos);
-            setTimeout(() => setSalvamentoSucesso(false), 1500);
-            console.log(`${quantidadeArtigosNovos} artigos novos salvos.`);
-
-        } catch (error) {
-            console.error(error);
-            setSalvamentoErro(true);
-            setTimeout(() => setSalvamentoErro(false), 1500);
-            setLoadingSync(false);
-        }
-    };
-
-    const deleteArtista = async (artistaId: string) => {
-        try {
-            await firestore.collection('artistas').doc(artistaId).delete();
-            await firestore.collection('materias').where('idArtista', '==', artistaId).get()
-                .then((querySnapshot) => {
-                    querySnapshot.forEach((doc) => {
-                        doc.ref.delete();
-                    });
-                })
-            setSelectedArtista(null);
-            const updateNomes = nomes.filter((artista) => artista.id !== artistaId);
-            setLoading(true);
-            setNomes(updateNomes);
-            setTimeout(() => setLoading(false), 800);
-            setTimeout(() => setDeleteSucesso(true), 1000);
-            setTimeout(() => setDeleteSucesso(false), 800);
-        } catch (error) {
-            console.error(error);
-        }
-    };
 
     function formatarData(data: any) {
         const options: any = {
@@ -225,6 +68,28 @@ const ListaNomes: React.FC = () => {
         const formatter = new Intl.DateTimeFormat('pt-BR', options);
         return formatter.format(new Date(data));
     }
+    const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.checked) {
+            setAllArtistsSelected(true);
+            setSelectedArtistas(
+                nomes
+                    .filter((artista) => artista.id !== undefined)
+                    .map((artista) => artista.id!)
+            );
+        } else {
+            setAllArtistsSelected(false);
+            setSelectedArtistas([]);
+        }
+    };
+
+
+    const handleSelectArtista = (event: React.ChangeEvent<HTMLInputElement>, artistaId: string) => {
+        if (event.target.checked) {
+            setSelectedArtistas((prevSelectedArtistas) => [...prevSelectedArtistas, artistaId]);
+        } else {
+            setSelectedArtistas((prevSelectedArtistas) => prevSelectedArtistas.filter((id) => id !== artistaId));
+        }
+    };
 
     return (
         <>
@@ -258,6 +123,9 @@ const ListaNomes: React.FC = () => {
                             <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                                 <tr>
                                     <th scope="col" className="py-3">
+                                        <input type="checkbox" checked={selectedArtistas.length === nomes.length} onChange={handleSelectAll} />
+                                    </th>
+                                    <th scope="col" className="py-3">
                                         Nome
                                     </th>
                                     <th scope="col" className="py-3">
@@ -274,29 +142,34 @@ const ListaNomes: React.FC = () => {
                             <tbody>
                                 {nomes.length === 0 ? (
                                     <tr>
-                                        <td colSpan={4} className="py-4 text-center text-gray-500">
+                                        <td colSpan={5} className="py-4 text-center text-gray-500">
                                             Não existem nomes cadastrados
                                         </td>
                                     </tr>
                                 ) : (
-                                    nomes.map((nome) => (
-                                        <tr key={nome.id} className="bg-white border-b">
+                                    nomes.map((nome, index) => (
+                                        <tr key={index} className="bg-white border-b">
                                             <td scope="row" className="py-4 px-2 font-medium text-center text-gray-900">
-                                                {nome.nome}
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedArtistas.includes(nome.id ?? '')}
+                                                    onChange={(event) => handleSelectArtista(event, nome.id ?? '')}
+                                                />
+                                            </td>
+                                            <td scope="row" className="py-4 px-2 font-medium text-center text-gray-900">
+                                                {nome.name}
                                             </td>
                                             <td className="py-4 px-2 text-center">
-                                                {nome.ultimaSincronizacao ? formatarData(nome.ultimaSincronizacao) : 'Não sincronizado'}
+                                                {nome.last_sync ? formatarData(nome.last_sync) : 'Não sincronizado'}
                                             </td>
                                             <td className="py-4 px-2 text-center">
-                                                {nome.ultimaDataRetorno ? formatarData(nome.ultimaDataRetorno) : 'Sem resultados'}
+                                                {nome.last_return ? formatarData(nome.last_return) : 'Sem resultados'}
                                             </td>
                                             <td className="py-4 px-2 flex flex-col md:flex-row items-center justify-center space-y-2 md:space-y-0 md:space-x-3">
                                                 <button className="font-medium text-white rounded-md hover:bg-blue-700 bg-blue-600 p-2">
-                                                    <Link href={`/detalhes/${nome.id}`}>
-                                                        Detalhes
-                                                    </Link>
+                                                    <Link href={`/detalhes/${nome.id}`}>Detalhes</Link>
                                                 </button>
-                                                <button onClick={() => deleteArtista(nome.id)} className="font-medium text-white rounded-md hover:bg-red-700 bg-red-600 p-2">
+                                                <button onClick={() => deleteArtista({ id: nome.id })} className="font-medium text-white rounded-md hover:bg-red-700 bg-red-600 p-2">
                                                     Excluir
                                                 </button>
                                             </td>
@@ -306,12 +179,12 @@ const ListaNomes: React.FC = () => {
                             </tbody>
                         </table>
                         }
-                        <Button type="button" onClick={sincronizarArtigos} text={loadingSync ? 'Sincronizando...' : 'Sincronizar Artigos'} loading={loadingSync} />
+                        <Button type="button" disabled={nomes.length === 0} onClick={sincronizarArtigos} text={loadingSync ? 'Sincronizando...' : 'Sincronizar Artigos'} loading={loadingSync} />
                     </div>
                 </div>
 
 
-                {isModalOpen && <Modal selectedItem={selectedItem} closeModal={() => setIsModalOpen(false)} />}
+
             </Layout >
         </>
     );

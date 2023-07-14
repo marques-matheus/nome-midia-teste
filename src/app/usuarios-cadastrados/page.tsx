@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { firestore, auth } from '../../../firebase';
+import { firestore } from '@/utils/firebase';
 import Layout from '@/components/Layout';
 import { Spinner } from 'flowbite-react';
 

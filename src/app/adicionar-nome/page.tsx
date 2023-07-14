@@ -1,73 +1,38 @@
 'use client';
 import React, { useState } from 'react';
-import { firestore } from '../../../firebase';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
 import Layout from '@/components/Layout';
-import { useAuth } from '../../../hooks/useAuth';
+import useSaveArtistRegister from '@/hooks/useSaveArtistRegister';
+import { useGetUserInfo } from '@/hooks/useGetUserInfo';
 
 
-interface Nome {
-  nome: string;
-  empresaId: string;
-  palavrasChave: string[];
-}
 
 const AdicionarNome: React.FC = () => {
-  const { user } = useAuth();
+  const { company } = useGetUserInfo();
   const [nomeInput, setNomeInput] = useState('');
   const [infoInput, setInfoinput] = useState('');
-  const [salvamentoSucesso, setSalvamentoSucesso] = useState(false);
-  const [salvamentoErro, setSalvamentoErro] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const adicionarNome = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!nomeInput) {
-      setSalvamentoErro(true);
-      setTimeout(() => setSalvamentoErro(false), 500);
-    } else {
-      const nomes = nomeInput.split(',');
-      const infos = infoInput.split(',');
-      const nomesRef = firestore.collection('artistas');
-      const promises = nomes.map(async (nome) => {
-        const nomeData: Nome = {
-          nome: nome.trim(),
-          palavrasChave: infoInput.trim().split(' '),
-          empresaId: '',
-        };
-        try {
-          // Consultar o documento do usuário para obter o campo empresaId
-          const userRef = firestore.collection('users').doc(user?.uid);
-          const userSnapshot = await userRef.get();
+  const {
+    newArtistName,
+    artistNameError,
+    saveArtists,
+    validateArtistNames,
+    loading,
+    salvamentoSucesso,
+    salvamentoErro
+  } = useSaveArtistRegister(company?.uid, nomeInput.split(','), infoInput.split(','));
 
-          if (userSnapshot.exists) {
-            const userData = userSnapshot.data();
-            if (userData?.empresaId) {
-              nomeData.empresaId = userData.empresaId;
-              await nomesRef.add(nomeData);
-            }
-          }
-          setLoading(true);
-          setTimeout(() => setLoading(false), 300);
-          setTimeout(() => setSalvamentoSucesso(true), 500);
-          setTimeout(() => setSalvamentoSucesso(false), 1500);
-        } catch (error) {
-          console.error(error);
-          setSalvamentoErro(true);
-          setTimeout(() => setSalvamentoErro(false), 1500);
-        }
-      })
-        ;
 
-      try {
-        await Promise.all(promises);
-        setNomeInput('');
-        setInfoinput('');
-      } catch (error) {
-        console.error(error);
-      }
+
+  const handleSaveArtist = async (e: React.FormEvent) => {
+    e.preventDefault();
+    validateArtistNames();
+    if (!artistNameError) {
+      await saveArtists();
+      setNomeInput('');
     }
   };
+
 
   return (
     <Layout>
@@ -83,7 +48,7 @@ const AdicionarNome: React.FC = () => {
             Erro ao salvar nome(s). Tente novamente mais tarde.
           </span>
         )}
-        <form className="w-full " onSubmit={adicionarNome}>
+        <form className="w-full " onSubmit={handleSaveArtist}>
           <Input
             required
             type="text"
@@ -102,7 +67,7 @@ const AdicionarNome: React.FC = () => {
             onChange={(event) => setInfoinput(event.target.value)}
           />
           <p id="helper-text-explanation" className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Adicione palavras chaves adicionais, como area de atuação, evento realacionado e etc... Exemplo:"Jogador, Futebol, Apresentador"
+            Adicione palavras chaves adicionais, como area de atuação, evento relacionado e etc... Exemplo:"Jogador, Futebol, Apresentador"
           </p>
           <Button loading={loading} text={loading ? 'Salvando...' : '+ Salvar'} type="submit" />
         </form>

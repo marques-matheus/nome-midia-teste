@@ -1,160 +1,123 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { auth, firestore } from '../../../firebase';
-import Layout from '@/components/Layout';
-import { useRouter } from 'next/navigation';
+import useRegisterUser from '@/hooks/useRegisterUser';
 import Button from '@/components/Button';
-
-const RegisterAdmin = () => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [displayName, setDisplayName] = useState('');
-    const [nomeEmpresa, setNomeEmpresa] = useState('');
-    const [salvamentoSucesso, setSalvamentoSucesso] = useState(false);
-    const [salvamentoErro, setSalvamentoErro] = useState(false);
-    const [errorMessage, setErrorMessage] = useState('');
-    const [currentUser, setCurrentUser] = useState<any>();
-    const [loading, setLoading] = useState(false);
-    const router = useRouter();
+import Layout from '@/components/Layout';
+import { cnpj  } from 'cpf-cnpj-validator';
+import { useState, useEffect } from 'react';
 
 
-    useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged((user: any) => {
-            setCurrentUser(user);
+const registerAdmin = () => {
+    const { errorMessage, loading, address, name, businessEmail, city,  companyName, email, password, phone, state,
+        setName, setEmail, setPassword, setCompanyName, setCnpj, setAddress, setCity, setState, setCompanyRegistered, setBusinessEmail,
+        setPhone, handleRegister } = useRegisterUser();
+    const [formattedCnpj, setFormattedCnpj] = useState('');
+    const [cnpjError, setCnpjError] = useState('');
+    const handleCnpjChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const inputValue = event.target.value;
+        const formattedValue = cnpj.format(inputValue);
+        setCnpj(formattedValue);
+        setFormattedCnpj(formattedValue); 
+        setCnpjError(''); 
 
-            if (user) {
-                firestore
-                    .collection('users')
-                    .doc(user.uid)
-                    .get()
-                    .then((doc) => {
-                        if (doc.exists) {
-                            const userData: any = doc.data();
-                            setCurrentUser((prevUser: any) => ({
-                                ...prevUser,
-                                isAdmin: userData.isAdmin,
-                                displayName: userData.displayName,
-
-                            }));
-                        }
-                    })
-                    .catch((error) => {
-
-                    });
+        if (inputValue.length === 14) {
+            if (!cnpj.isValid(inputValue)) {
+                setCnpjError('CNPJ inválido');
             }
-            console.log(user);
-        });
-
-        return () => {
-            unsubscribe();
-        };
-    }, []);
-    useEffect(() => {
-        const checkUserAuthentication = () => {
-            const user = auth.currentUser;
-            if (!user || (currentUser && !currentUser.isAdmin)) {
-                // Redireciona para outra página, caso o usuário não esteja logado ou não seja um administrador
-                router.push('/');
-            }
-        };
-        checkUserAuthentication();
-    }, []);
-
-    const handleRegister = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        try {
-            setLoading(true);
-            const { user } = await auth.createUserWithEmailAndPassword(email, password);
-
-            if (user) {
-                await user.updateProfile({ displayName }); // Atualizar o nome do usuário
-                const empresaRef = firestore.collection('empresas').doc();
-                const userRef = firestore.collection('users').doc(user.uid);
-
-                await Promise.all([
-                    empresaRef.set({ nomeEmpresa }), // Salvar o nome da empresa no Firestore
-                    userRef.set({ displayName, empresaId: empresaRef.id, isAdmin: false }) // Salvar o nome do usuário e ID da empresa no Firestore
-                ]);
-
-                setTimeout(() => setLoading(false), 300);
-                setSalvamentoSucesso(true);
-                setTimeout(() => setSalvamentoSucesso(false), 2000);
-
-                // Redirecionar o admin para a página desejada
-                router.push('/');
-            }
-        } catch (error: any) {
-            setSalvamentoErro(true);
-            setTimeout(() => setSalvamentoErro(false), 2000);
-            if (error.code === 'auth/email-already-in-use') {
-                setErrorMessage('Este e-mail já foi cadastrado');
-            } else if (error.code === 'auth/invalid-email') {
-                setErrorMessage('Email inválido');
-            } else if (error.code === 'auth/weak-password') {
-                setErrorMessage('Senha muito fraca, a senha deve ter no mínimo 6 caracteres');
-            } else if (error.code === 'auth/invalid-password') {
-                setErrorMessage('Senha inválida');
-            } else if (error.code === 'auth/invalid-email') {
-                setErrorMessage('Email inválido');
-            } else {
-                setErrorMessage(error.message);
-            }
-
         }
     };
 
-
+    useEffect(() => {
+        setCompanyRegistered(false);
+    })
     return (
         <Layout>
 
-            <div className="flex flex-col items-center w-full m-auto mt-24">
-                {salvamentoSucesso && (
-                    <span className="text-center bg-green-100 border-2 border-green-600 text-lg font-bold w-full rounded py-2 mb-10 px-10 mx-auto text-green-500">
-                        Usuario salvo com sucesso!
-                    </span>
-                )}
-                {salvamentoErro && (
-                    <span className="text-center bg-red-100 border-2 border-red-600 text-lg font-bold w-full rounded py-2 mb-10 px-10 mx-auto text-red-500">
-                        Erro ao salvar usuario. este email já está em uso.
-                    </span>
-                )}
+            <div className="flex flex-col items-center w-full mx-auto ">
                 <h1 className="text-2xl font-bold mb-4">Registrar</h1>
-
+                {errorMessage && <p className="text-red-500 mb-4">{errorMessage}</p>}
                 <form className="flex flex-col items-center lg:w-6/12 shadow-lg p-10" onSubmit={handleRegister}>
                     <input
                         type="text"
-                        placeholder="Nome do usuário"
+                        placeholder="Nome do usuário *"
                         className="border border-gray-300 px-4 py-2 mb-2 rounded-md w-full lg:w-8/12"
-                        value={displayName}
-                        onChange={(e) => setDisplayName(e.target.value)}
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
                     />
-                    <input
-                        type="text"
-                        placeholder="Nome da empresa"
-                        className="border border-gray-300 px-4 py-2 mb-2 rounded-md w-full lg:w-8/12"
-                        value={nomeEmpresa}
-                        onChange={(e) => setNomeEmpresa(e.target.value)}
-                    />
+
                     <input
                         type="email"
-                        placeholder="E-mail"
+                        placeholder="E-mail *"
                         className="border border-gray-300 px-4 py-2 mb-2 rounded-md w-full lg:w-8/12"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                     />
                     <input
                         type="password"
-                        placeholder="Senha"
+                        placeholder="Senha *"
                         className="border border-gray-300 px-4 py-2 mb-2 rounded-md w-full lg:w-8/12"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                     />
-                    <Button loading={loading} type="submit" text={loading ? 'Registrando...' : 'Registrar usuario'} />
+                    <input
+                        required
+                        type="text"
+                        placeholder="Nome da empresa *"
+                        className="border border-gray-300 px-4 py-2 mb-2 rounded-md w-full lg:w-8/12"
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                    />
+                    <input
+                        required
+                        type="text"
+                        placeholder="CNPJ *"
+                        maxLength={14}
+                        className={`border ${cnpjError ? 'border-red-500' : 'border-gray-300'} px-4 py-2 mb-2 rounded-md w-full lg:w-8/12`}
+                        value={formattedCnpj}
+                        onChange={handleCnpjChange}
+                    />
+                    {cnpjError && <p className="text-red-500 text-xs  mb-1">{cnpjError}</p>}
+
+                    <input
+                        type="text"
+                        placeholder="Rua"
+                        className="border border-gray-300 px-4 py-2 mb-2 rounded-md w-full lg:w-8/12"
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                    />
+                    <input
+                        type="text"
+                        placeholder="Cidade"
+                        className="border border-gray-300 px-4 py-2 mb-2 rounded-md w-full lg:w-8/12"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                    />
+                    <input
+                        type="text"
+                        placeholder="Estado"
+                        className="border border-gray-300 px-4 py-2 mb-2 rounded-md w-full lg:w-8/12"
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                    />
+                    <input
+                        type="text"
+                        placeholder="Email da empresa"
+                        className="border border-gray-300 px-4 py-2 mb-2 rounded-md w-full lg:w-8/12"
+                        value={businessEmail}
+                        onChange={(e) => setBusinessEmail(e.target.value)}
+                    />
+                    <input
+                        type="text"
+                        placeholder="Telefone"
+                        className="border border-gray-300 px-4 py-2 mb-2 rounded-md w-full lg:w-8/12"
+                        value={phone}
+                        maxLength={11}
+                        onChange={(e) => setPhone(e.target.value)}
+                    />
+                    <Button type="submit" disabled={cnpjError ? true : false} text={loading ? 'Cadastrando...' : 'Cadastrar'} loading={loading} />
                 </form>
             </div>
         </Layout>
     );
 };
 
-export default RegisterAdmin;
+export default registerAdmin;

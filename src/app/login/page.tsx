@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { auth } from '../../../firebase';
+import { auth } from '@/utils/firebase';
 import { useRouter } from 'next/navigation'
 import Link from 'next/link';
 import Button from '@/components/Button';
@@ -61,11 +61,13 @@ const Entrar: React.FC = () => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <Button
-          type="submit"
-
-          text="Entrar"
-        />
+        <div className='flex flex-row items-center justify-between w-44'>
+          <Button
+            type="submit"
+            text="Entrar"
+          />
+          <Link href="/register" className='text-blue-500 text-sm font-bold mt-4 hover:text-blue-600'>Registrar </Link>
+        </div>
       </form>
 
     </div>

@@ -1,46 +1,35 @@
 'use client'
 import Layout from "@/components/Layout";
 import { useState, useEffect } from "react";
-import { firestore, auth } from "../../../../firebase";
 import { Spinner } from "flowbite-react";
 import * as XLSX from 'xlsx';
 import Link from "next/link";
 import { IoArrowBackCircleOutline } from "react-icons/io5";
+import { Article, Artist } from "@/types";
+import { get_artist, get_articles } from "@/utils/firebase";
+import { useGetUserInfo } from "@/hooks/useGetUserInfo";
 
 
 
-
-interface Nome {
-    id: string;
-    nome: string;
-    palavrasChave: string[];
-    ultimaSincronizacao: Date | null;
-    ultimaDataRetorno: Date | null;
-}
 
 
 const Detalhes = ({ params }: { params: { id: string } }) => {
-
+    const { company } = useGetUserInfo();
     const [loading, setLoading] = useState(false);
-    const [artista, setArtista] = useState<Nome | null>(null);
-    const [artigos, setArtigos] = useState<any[]>([]);
+    const [artista, setArtista] = useState<Artist | null>(null);
+    const [artigos, setArtigos] = useState<Article[] | undefined>([]);
     const id = params.id;
 
     useEffect(() => {
         const fetchArtista = async () => {
-            try {
-                setLoading(true);
-                const artistaSnapshot = await firestore
-                    .collection('artistas').doc(id).get();
-                setArtista(artistaSnapshot.data() as Nome);
-                setTimeout(() => setLoading(false), 500);
-            } catch (error) {
-                console.error(error);
-            }
+            setLoading(true);
+            const artistaSnapshot = await get_artist(id, company?.uid);
+            setArtista(artistaSnapshot as Artist);
+            setTimeout(() => setLoading(false), 500);
         };
         fetchArtista();
 
-    }, []);
+    }, [company]);
 
 
 
@@ -57,21 +46,9 @@ const Detalhes = ({ params }: { params: { id: string } }) => {
 
     useEffect(() => {
         const fetchArtigos = async () => {
-            try {
-                const artigosSnapshot = await firestore
-                    .collection('materias')
-                    .where('idArtista', '==', id)
-                    .get();
+            const artigosData = await get_articles(id, company?.uid);
+            setArtigos(artigosData);
 
-                const artigosData: any[] = [];
-                artigosSnapshot.forEach((doc) => {
-                    artigosData.push({ id: doc.id, ...doc.data() });
-                });
-
-                setArtigos(artigosData);
-            } catch (error) {
-                console.error(error);
-            }
         };
         fetchArtigos();
     }, [artista]);
@@ -83,17 +60,16 @@ const Detalhes = ({ params }: { params: { id: string } }) => {
                 <div className="flex flex-col w-full ">
                     <Link href="/nomes-cadastrados" className="text-blue-600 hover:text-blue-800 align-left flex flex-row items-center md:ml-48 my-5"><IoArrowBackCircleOutline size={24} /> Voltar</Link>
                     <div className="relative w-full md:w-10/12 mx-auto md:ml-32 lg:ml-48 h-fit flex items-center justify-around flex-col overflow-x-auto shadow-md sm:rounded-lg">
-                        <button onClick={() => exportToExcel('tabela', `${artista?.nome}`)} className="font-medium my-10 w-6/12 text-white rounded-md hover:bg-blue-700 bg-blue-600 p-2">
+                        <button onClick={() => exportToExcel('tabela', `${artista?.name}`)} className="font-medium my-10 w-6/12 text-white rounded-md hover:bg-blue-700 bg-blue-600 p-2">
                             Exportar para excel
                         </button>
-
                         {loading ? <Spinner size="xl" className="my-10" /> :
                             <div className="overflow-x-auto w-full">
                                 <table id="tabela" className="w-full text-sm text-gray-500">
                                     <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                                         <tr>
                                             <th colSpan={3} className="py-3 text-xl font-bold text-center">
-                                                Artigos de: {artista?.nome}
+                                                Artigos de: {artista?.name}
                                             </th>
                                         </tr>
                                         <tr>
@@ -109,20 +85,21 @@ const Detalhes = ({ params }: { params: { id: string } }) => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {artigos.length === 0 ? (
+
+                                        {artigos?.length === 0 ? (
                                             <tr className="my-10">
                                                 <td colSpan={3} className="text-center  text-lg">
                                                     Nenhum artigo encontrado, sincronize o banco de dados
                                                 </td>
                                             </tr>
                                         ) : (
-                                            artigos.map((artigo: any) => (
+                                            artigos?.map((artigo: any) => (
                                                 <tr key={artigo.id}>
-                                                    <td className="py-4  px-6 align-top">{artigo.titulo}</td>
+                                                    <td className="py-4  px-6 align-top">{artigo.title}</td>
                                                     <td className="py-4  px-6 align-top text-blue-600 hover:text-blue-800">
                                                         <Link href={artigo.url}>{artigo.url}</Link>
                                                     </td>
-                                                    <td className="py-4  px-6 align-top">{artigo.descricao}</td>
+                                                    <td className="py-4  px-6 align-top">{artigo.description}</td>
                                                 </tr>
                                             ))
                                         )}
@@ -132,8 +109,6 @@ const Detalhes = ({ params }: { params: { id: string } }) => {
                         }
                     </div>
                 </div>
-
-
             </Layout >
         </>
     );

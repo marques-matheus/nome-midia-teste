@@ -1,7 +1,7 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { auth, firestore } from '../../../firebase';
+import { auth } from '@/utils/firebase';
 import { MdOutlineDashboard, MdBusiness } from 'react-icons/md';
 import { AiOutlineUser, AiOutlineUserAdd, AiOutlineLogout } from 'react-icons/ai';
 import { FiUserPlus } from 'react-icons/fi';
@@ -27,8 +27,6 @@ const Sidebar = ({ currentUser }: ItemNavProps) => {
   const handleLogout = async () => {
     try {
       await auth.signOut();
-
-
     } catch (error: any) {
       console.log(error.message);
     }
@@ -61,7 +59,7 @@ const Sidebar = ({ currentUser }: ItemNavProps) => {
 
           {currentUser && (
             <p className='text-sm ml-3 mt-2 '>
-              Usuário: {currentUser.displayName}
+              Usuário: {currentUser.email}
             </p>
           )}
           <nav className='my-6'>
