@@ -391,6 +391,7 @@ export {
     update_articles,
     get_company_for_user,
     dashboard_count_users,
+    cron_get_all_artists,
     get_user,
     get_user_info,
     dashboard_count_artist_for_company,
