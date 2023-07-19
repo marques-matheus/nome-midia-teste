@@ -2,4 +2,4 @@ function teste(){
   console.log('teste')
 }
 
-teste()
+export default teste
