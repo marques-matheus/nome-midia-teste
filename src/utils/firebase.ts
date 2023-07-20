@@ -325,53 +325,59 @@ const getArtistsForCompany = async (companyID: string | undefined): Promise<Arti
 };
 
 async function existing_articles(company_id: string | undefined, artist: Artist | undefined, artigos: any[]) {
+    if (!company_id || !artist) {
+    console.log("ID da empresa ou artista indefinidos.");
+    return { quantidadeArtigosNovos: 0 };
+    }
+    
     let quantidadeArtigosNovos = 0;
     const existingArtigosQuerySnapshot = await firestore
-        .collection('companies')
-        .doc(company_id)
-        .collection('artists')
-        .doc(artist?.id)
-        .collection('articles')
-        .get();
-
+    .collection('companies')
+    .doc(company_id)
+    .collection('artists')
+    .doc(artist.id)
+    .collection('articles')
+    .get();
+    
     const existingArtigos = existingArtigosQuerySnapshot.docs.map((doc) => doc.data().title);
-    const artistDocRef = firestore
-        .collection('companies')
-        .doc(company_id)
-        .collection('artists')
-        .doc(artist?.id);
-
-    const articlesCollectionRef = artistDocRef.collection('articles');
-
+    
+    const articlesCollectionRef = firestore
+    .collection('companies')
+    .doc(company_id)
+    .collection('artists')
+    .doc(artist.id)
+    .collection('articles');
+    
     for (const artigo of artigos) {
-        const title = artigo.title;
-
-        if (!existingArtigos.includes(title)) {
-            const materiaData = {
-                artist: artist?.name,
-                title: artigo.title,
-                description: artigo.snippet,
-                url: artigo.link,
-            };
-
-            await articlesCollectionRef.add(materiaData);
-            quantidadeArtigosNovos++;
-        }
+    const title = artigo.title;
+    
+    if (!existingArtigos.includes(title)) {
+        const materiaData = {
+            artist: artist.name,
+            title: artigo.title,
+            description: artigo.snippet,
+            url: artigo.link,
+            uid: artist.id,
+        };
+    
+        await articlesCollectionRef.add(materiaData);
+        quantidadeArtigosNovos++;
     }
-
+    }
+    
     return { quantidadeArtigosNovos };
-}
-
-async function update_articles(companyId?: string | undefined, artist?: Artist) {
+    }
+    
+    async function update_articles(companyId?: string | undefined, artist?: Artist) {
     const batch = firestore.batch();
     const artistaDocRef = firestore
-        .collection('companies')
-        .doc(companyId)
-        .collection('artists')
-        .doc(artist?.id);
-
+    .collection('companies')
+    .doc(companyId)
+    .collection('artists')
+    .doc(artist?.id);
+    
     return {batch, artistaDocRef}
-}
+    }
 
 
 export default firebase;
@@ -392,6 +398,7 @@ export {
     get_company_for_user,
     dashboard_count_users,
     cron_get_all_artists,
+    cron_get_all_companies,
     get_user,
     get_user_info,
     dashboard_count_artist_for_company,
