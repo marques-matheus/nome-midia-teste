@@ -175,33 +175,22 @@ async function get_articles(id: string, companyId: string | undefined) {
     }
 }
 
-async function cron_get_all_artists() {
+async function cron_get_all_artists(companyId: string | undefined) {
     try {
-        const companies = await firestore.collection("companies").get();
-        const companies_data = companies.docs.map((company) => {
-            return {
-                uid: company.id,
-                ...company.data()
-            }
-        });
-        const artists = await Promise.all(companies_data.map(async (company) => {
-
-            const artists = await firestore.collection("companies").doc(company.uid).collection("artists").get();
-            const artists_data = artists.docs.map((artist) => {
-                return {
-                    uid: artist.id,
-                    ...artist.data()
-                }
-            });
-            return artists_data;
-        }));
-        return artists;
+      const artists = await firestore.collection("companies").doc(companyId).collection("artists").get();
+      const artists_data = artists.docs.map((artist) => {
+        return {
+          uid: artist.id,
+          ...artist.data()
+        }
+      });
+      return artists_data;
     } catch (error: any) {
-        console.log("Erro ao pegar todos os artistas => ", error);
-        return Error(error.message);
+      console.log("Erro ao pegar todos os artistas => ", error);
+      return Error(error.message);
     }
-}
-
+  }
+  
 async function cron_get_all_companies() {
     try {
         const companies = await firestore.collection("companies").get();
