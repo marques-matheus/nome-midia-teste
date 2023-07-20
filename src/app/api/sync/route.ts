@@ -1,8 +1,14 @@
 import { cron_get_all_artists, cron_get_all_companies, existing_articles, update_articles } from "@/utils/firebase";
+import { NextApiRequest, NextApiResponse } from 'next';
 
-export async function GET(request) {
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+
+export async function GET(request: NextRequest) {
+ 
   try {
-    const allCompaniesArray = await cron_get_all_companies();
+    const allCompaniesArray: any = await cron_get_all_companies();
     console.log(allCompaniesArray);
 
     // Itere sobre o array de empresas
@@ -15,15 +21,27 @@ export async function GET(request) {
   } catch (error) {
     console.log('Erro ao sincronizar todas as empresas => ', error);
   }
+
+  return NextResponse.json(
+    {
+      body: request.body,
+      path: request.nextUrl.pathname,
+      query: request.nextUrl.search,
+      cookies: request.cookies.getAll(),
+    },
+    {
+      status: 200,
+    },
+  );
 }
 
-async function syncAllArtistsArticles(companyId) {
+async function syncAllArtistsArticles(companyId: string | undefined) {
   try {
     const apiKey = process.env.NEXT_PUBLIC_API_KEY;
     const searchEngineId = process.env.NEXT_PUBLIC_ENGINE_ID;
 
     // Obtenha todos os artistas da empresa atual
-    const artistsOfCompany = await cron_get_all_artists(companyId);
+    const artistsOfCompany: any = await cron_get_all_artists(companyId);
     let totalQuantidadeArtigosNovos = 0;
     // Itere sobre o array de arrays, onde cada elemento interno é um array de artistas da empresa
    
@@ -81,6 +99,8 @@ async function syncAllArtistsArticles(companyId) {
   } catch (error) {
     console.log("Erro ao sincronizar todos os artistas => ", error);
   }
+
+  
 }
 
 
