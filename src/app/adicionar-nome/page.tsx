@@ -30,6 +30,7 @@ const AdicionarNome: React.FC = () => {
     if (!artistNameError) {
       await saveArtists();
       setNomeInput('');
+      setInfoinput('');
     }
   };
 
